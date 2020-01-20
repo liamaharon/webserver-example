@@ -30,22 +30,24 @@ fn handle_connection(mut stream: TcpStream) {
         return;
     }
 
-    // Load response from file
-    let contents_path = "hello.html";
-    let contents = match fs::read_to_string(contents_path) {
+    let get = b"GET / HTTP/1.1\r\n";
+
+    let (status_line, filename) = if buffer.starts_with(get) {
+        ("HTTP/1.1 200 OK\r\n\r\n", "hello.html")
+    } else {
+        ("HTTP/1.1 404 NOT FOUND\r\n\r\n", "404.html")
+    };
+
+    let contents = match fs::read_to_string(filename) {
         Ok(contents) => contents,
         Err(e) => {
-            println!("Failed to read {}, exiting [{}]", contents_path, e);
+            println!("Failed to read {}, returning [{}]", filename, e);
             return;
         }
     };
 
     // Write response to stream
-    let response = format!(
-        "HTTP/1.1 200 OK\rContent-Length: {}\r\n\r\n{}",
-        contents.len(),
-        contents
-    );
+    let response = format!("{}\r\n\r\n{}", status_line, contents);
     if let Err(e) = stream.write(response.as_bytes()) {
         println!("Failed to write response to stream, exiting [{}]", e);
         return;
